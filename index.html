@@ -73,15 +73,14 @@
     }
     th:first-child { z-index: 4; }
 
-    /* --- માઈક બટન (ખસેડી શકાય તેવું) --- */
+    /* --- માઈક બટન --- */
     .mic-btn { 
       background: #107c41; color: white; border: none;
       width: 55px; height: 55px; border-radius: 50%; font-size: 26px;
       display: flex; align-items: center; justify-content: center;
-      position: fixed; top: 150px; right: 20px; /* શરૂઆતની જગ્યા */
+      position: fixed; top: 150px; right: 20px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999;
-      cursor: move; /* બતાવે કે આ મુવ થાય છે */
-      touch-action: none; /* ટચ સ્ક્રીન માટે જરૂરી */
+      cursor: move; touch-action: none;
     }
     .mic-listening { background: #d32f2f; animation: pulse 1s infinite; }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
@@ -148,7 +147,8 @@
         let rowHTML = `<tr><td style="text-align:center;">${r}</td>`;
         for(let c=0; c<cols; c++) {
           let id = `${letters[c]}${r}`;
-          rowHTML += `<td><input type="text" class="cell-input col-${c}" id="${id}" onfocus="focusCell(this)"></td>`;
+          // અહીં onpaste ઇવેન્ટ ઉમેરી છે
+          rowHTML += `<td><input type="text" class="cell-input col-${c}" id="${id}" onfocus="focusCell(this)" onpaste="handlePaste(event, this)"></td>`;
         }
         rowHTML += `</tr>`;
         table.innerHTML += rowHTML;
@@ -160,63 +160,74 @@
       document.getElementById('fx-input').value = `Cell: ${el.id}`;
     }
 
-    // --- Mic Dragging Logic (નવું) ---
-    dragElement(document.getElementById("micBtn"));
+    // --- NEW: Smart Paste Logic ---
+    function handlePaste(e, el) {
+      e.preventDefault(); // ડિફોલ્ટ પેસ્ટ રોકો
+      
+      // ક્લિપબોર્ડ ડેટા મેળવો
+      let pasteData = (e.clipboardData || window.clipboardData).getData('text');
+      
+      let currentId = el.id; // જ્યાં પેસ્ટ કર્યું તે સેલ (દા.ત. A1)
+      let startColChar = currentId.charAt(0);
+      let startRow = parseInt(currentId.substring(1));
+      let startColIndex = letters.indexOf(startColChar);
 
-    function dragElement(elmnt) {
-      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-      let isDragging = false;
+      // ડેટાને લાઈન પ્રમાણે તોડો (Rows)
+      let rowsData = pasteData.split(/\r\n|\n|\r/);
 
-      // માઉસ અને ટચ બંને માટે
-      elmnt.onmousedown = dragMouseDown;
-      elmnt.ontouchstart = dragMouseDown;
-
-      function dragMouseDown(e) {
-        // આ ફંક્શન ક્લિક છે કે ડ્રેગ તે નક્કી કરશે
-        isDragging = false;
+      for (let r = 0; r < rowsData.length; r++) {
+        if(rowsData[r].trim() === "") continue; // ખાલી લાઈન છોડી દો
         
-        let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        // ડેટાને ટેબ પ્રમાણે તોડો (Columns)
+        let colsData = rowsData[r].split('\t');
 
-        pos3 = clientX;
-        pos4 = clientY;
-        
-        document.onmouseup = closeDragElement;
-        document.onmousemove = elementDrag;
-        document.ontouchend = closeDragElement;
-        document.ontouchmove = elementDrag;
-      }
+        for (let c = 0; c < colsData.length; c++) {
+          let targetColIndex = startColIndex + c;
+          let targetRow = startRow + r;
 
-      function elementDrag(e) {
-        e.preventDefault();
-        isDragging = true; // હલે છે એટલે ડ્રેગ છે
-
-        let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-
-        pos1 = pos3 - clientX;
-        pos2 = pos4 - clientY;
-        pos3 = clientX;
-        pos4 = clientY;
-
-        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
-      }
-
-      function closeDragElement() {
-        document.onmouseup = null;
-        document.onmousemove = null;
-        document.ontouchend = null;
-        document.ontouchmove = null;
-
-        // જો ડ્રેગ ન કર્યું હોય (ખાલી ક્લિક હોય) તો જ માઈક ચાલુ કરો
-        if (!isDragging) {
-          toggleVoice();
+          // લિમિટ ચેક કરો
+          if (targetColIndex < cols && targetRow <= rows) {
+            let targetId = `${letters[targetColIndex]}${targetRow}`;
+            let targetCell = document.getElementById(targetId);
+            if (targetCell) {
+              targetCell.value = colsData[c].trim();
+            }
+          }
         }
       }
     }
 
-    // --- Voice Logic (સેમ જૂનું) ---
+    // --- Mic Dragging Logic ---
+    dragElement(document.getElementById("micBtn"));
+    function dragElement(elmnt) {
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      let isDragging = false;
+      elmnt.onmousedown = dragMouseDown; elmnt.ontouchstart = dragMouseDown;
+      function dragMouseDown(e) {
+        isDragging = false;
+        let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        pos3 = clientX; pos4 = clientY;
+        document.onmouseup = closeDragElement; document.onmousemove = elementDrag;
+        document.ontouchend = closeDragElement; document.ontouchmove = elementDrag;
+      }
+      function elementDrag(e) {
+        e.preventDefault(); isDragging = true;
+        let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        pos1 = pos3 - clientX; pos2 = pos4 - clientY;
+        pos3 = clientX; pos4 = clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+      function closeDragElement() {
+        document.onmouseup = null; document.onmousemove = null;
+        document.ontouchend = null; document.ontouchmove = null;
+        if (!isDragging) toggleVoice();
+      }
+    }
+
+    // --- Voice Logic ---
     function toggleVoice() {
       if(!activeCell) return alert("ખાના પર ક્લિક કરો!");
       const btn = document.getElementById('micBtn');
@@ -237,7 +248,7 @@
       } else { alert("Mic Not Supported"); }
     }
     
-    // --- બાકીના ફંક્શન્સ (Date, Export, Calculation, Resize) ---
+    // --- Other Functions (Format, Resize, Export, Calc) ---
     function formatColumn(colIndex) {
       let choice = prompt(`કોલમ ${letters[colIndex]} માટે:\n1 -> તારીખ (Date)\n2 -> લખાણ (Text)`);
       if(choice === "1") document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'date');
