@@ -48,7 +48,6 @@
       position: relative;
     }
     
-    /* કોલમ હેડર બટન - હવે ક્લિક સહેલું થશે */
     .col-header-btn {
       background: transparent; border: none; font-weight: bold; font-size: 14px; 
       width: 100%; height: 100%; cursor: pointer; color: #333;
@@ -67,8 +66,6 @@
       font-size: 16px; text-align: center; background: transparent; color: #333; font-family: inherit;
     }
     input.cell-input:focus { border: 2px solid #107c41; background: #e6f4ea; font-weight: bold; }
-    
-    /* ડેટા પીકર */
     input[type="date"] { position: relative; font-size: 14px; }
 
     th:first-child, td:first-child { 
@@ -76,13 +73,15 @@
     }
     th:first-child { z-index: 4; }
 
-    /* --- માઈક બટન (ઉપર જમણી બાજુ) --- */
+    /* --- માઈક બટન (ખસેડી શકાય તેવું) --- */
     .mic-btn { 
       background: #107c41; color: white; border: none;
-      width: 50px; height: 50px; border-radius: 50%; font-size: 24px;
+      width: 55px; height: 55px; border-radius: 50%; font-size: 26px;
       display: flex; align-items: center; justify-content: center;
-      position: fixed; top: 135px; right: 15px; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100;
+      position: fixed; top: 150px; right: 20px; /* શરૂઆતની જગ્યા */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999;
+      cursor: move; /* બતાવે કે આ મુવ થાય છે */
+      touch-action: none; /* ટચ સ્ક્રીન માટે જરૂરી */
     }
     .mic-listening { background: #d32f2f; animation: pulse 1s infinite; }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
@@ -97,7 +96,7 @@
 <body>
 
   <div class="app-bar">
-    <div class="brand">📊 Desi Excel </div>
+    <div class="brand">📊 Dev Excel</div>
     <button class="math-btn btn-excel" onclick="downloadExcel()">📥 Save Excel</button>
   </div>
 
@@ -123,7 +122,7 @@
     Created for: <b>Desi Excel</b> | By Devendrabhai
   </div>
 
-  <button id="micBtn" class="mic-btn" onclick="toggleVoice()">🎤</button>
+  <div id="micBtn" class="mic-btn">🎤</div>
 
   <script>
     let rows = 20;
@@ -136,7 +135,6 @@
       const table = document.getElementById('grid');
       let header = `<tr><th style="width:${colWidths[0]}px">#</th>`;
       for(let i=0; i<cols; i++) {
-        // સુધારો: હવે બટન મૂક્યું છે જેથી એક ક્લિક પર મેનુ ખુલે
         header += `
           <th style="width:${colWidths[i+1]}px" id="th-${i}">
             <button class="col-header-btn" onclick="formatColumn(${i})">${letters[i]} ▼</button>
@@ -162,25 +160,90 @@
       document.getElementById('fx-input').value = `Cell: ${el.id}`;
     }
 
-    // --- Date Format (Single Click Fix) ---
-    function formatColumn(colIndex) {
-      // એક વાર ક્લિક કરતા જ પૂછશે
-      let choice = prompt(`કોલમ ${letters[colIndex]} માં શું લખવું છે?\n1 લખો -> તારીખ (Date)\n2 લખો -> લખાણ (Text)`);
-      
-      if(choice === "1") {
-        document.querySelectorAll(`.col-${colIndex}`).forEach(input => {
-          input.type = 'date';
-          input.value = ''; // જૂનું સાફ કરો જેથી ભૂલ ન પડે
-        });
-        alert(`કોલમ ${letters[colIndex]} તારીખ માટે સેટ થઈ ગઈ!`);
-      } 
-      else if(choice === "2") {
-        document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'text');
-        alert(`કોલમ ${letters[colIndex]} નોર્મલ થઈ ગઈ.`);
+    // --- Mic Dragging Logic (નવું) ---
+    dragElement(document.getElementById("micBtn"));
+
+    function dragElement(elmnt) {
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      let isDragging = false;
+
+      // માઉસ અને ટચ બંને માટે
+      elmnt.onmousedown = dragMouseDown;
+      elmnt.ontouchstart = dragMouseDown;
+
+      function dragMouseDown(e) {
+        // આ ફંક્શન ક્લિક છે કે ડ્રેગ તે નક્કી કરશે
+        isDragging = false;
+        
+        let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+        pos3 = clientX;
+        pos4 = clientY;
+        
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+        document.ontouchend = closeDragElement;
+        document.ontouchmove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e.preventDefault();
+        isDragging = true; // હલે છે એટલે ડ્રેગ છે
+
+        let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+        pos1 = pos3 - clientX;
+        pos2 = pos4 - clientY;
+        pos3 = clientX;
+        pos4 = clientY;
+
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+        document.ontouchend = null;
+        document.ontouchmove = null;
+
+        // જો ડ્રેગ ન કર્યું હોય (ખાલી ક્લિક હોય) તો જ માઈક ચાલુ કરો
+        if (!isDragging) {
+          toggleVoice();
+        }
       }
     }
 
-    // --- Drag Resize ---
+    // --- Voice Logic (સેમ જૂનું) ---
+    function toggleVoice() {
+      if(!activeCell) return alert("ખાના પર ક્લિક કરો!");
+      const btn = document.getElementById('micBtn');
+      if ('webkitSpeechRecognition' in window) {
+        let recognition = new webkitSpeechRecognition();
+        recognition.lang = 'gu-IN';
+        recognition.start();
+        btn.classList.add("mic-listening");
+        recognition.onresult = function(event) {
+          let text = event.results[0][0].transcript.toLowerCase();
+          btn.classList.remove("mic-listening");
+          let mathStr = text.replace(/વત્તા/g, "+").replace(/ઓછા/g, "-").replace(/ગુણ્યા/g, "*").replace(/ભાગ્યા/g, "/").replace(/ /g, "");
+          if (mathStr.includes("+") || mathStr.includes("-") || mathStr.includes("*") || mathStr.includes("/")) {
+             try { activeCell.value = eval(mathStr); } catch(e) { activeCell.value = text; }
+          } else { activeCell.value = text; }
+        };
+        recognition.onerror = function() { btn.classList.remove("mic-listening"); };
+      } else { alert("Mic Not Supported"); }
+    }
+    
+    // --- બાકીના ફંક્શન્સ (Date, Export, Calculation, Resize) ---
+    function formatColumn(colIndex) {
+      let choice = prompt(`કોલમ ${letters[colIndex]} માટે:\n1 -> તારીખ (Date)\n2 -> લખાણ (Text)`);
+      if(choice === "1") document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'date');
+      else if(choice === "2") document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'text');
+    }
+
     let startX, startWidth, resizingColIndex;
     function initResize(e, index) {
       let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
@@ -189,9 +252,7 @@
       startWidth = th.offsetWidth;
       document.addEventListener('mousemove', doResize); document.addEventListener('mouseup', stopResize);
       document.addEventListener('touchmove', doResize); document.addEventListener('touchend', stopResize);
-      e.target.classList.add('resizing'); 
-      e.preventDefault(); // Stop text selection
-      e.stopPropagation(); // Stop clicking the button behind it
+      e.target.classList.add('resizing'); e.preventDefault(); e.stopPropagation();
     }
     function doResize(e) {
       let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
@@ -205,7 +266,6 @@
       document.querySelectorAll('.resizer').forEach(r => r.classList.remove('resizing'));
     }
 
-    // --- Excel Export ---
     function downloadExcel() {
       let csvContent = "data:text/csv;charset=utf-8,";
       let headerArr = [""];
@@ -230,7 +290,6 @@
       document.body.removeChild(link);
     }
 
-    // --- Calculations ---
     function calculate(type) {
       if(!activeCell) return alert("જવાબ માટે ખાનું સિલેક્ટ કરો.");
       let currentId = activeCell.id;
@@ -279,27 +338,6 @@
       activeCell.style.fontWeight = "bold"; activeCell.style.color = "#107c41";
       document.getElementById('fx-input').value = `જવાબ: ${result}`;
       speak(`જવાબ છે ${result}`);
-    }
-
-    // --- Voice Input ---
-    function toggleVoice() {
-      if(!activeCell) return alert("ખાના પર ક્લિક કરો!");
-      const btn = document.getElementById('micBtn');
-      if ('webkitSpeechRecognition' in window) {
-        let recognition = new webkitSpeechRecognition();
-        recognition.lang = 'gu-IN';
-        recognition.start();
-        btn.classList.add("mic-listening");
-        recognition.onresult = function(event) {
-          let text = event.results[0][0].transcript.toLowerCase();
-          btn.classList.remove("mic-listening");
-          let mathStr = text.replace(/વત્તા/g, "+").replace(/ઓછા/g, "-").replace(/ગુણ્યા/g, "*").replace(/ભાગ્યા/g, "/").replace(/ /g, "");
-          if (mathStr.includes("+") || mathStr.includes("-") || mathStr.includes("*") || mathStr.includes("/")) {
-             try { activeCell.value = eval(mathStr); } catch(e) { activeCell.value = text; }
-          } else { activeCell.value = text; }
-        };
-        recognition.onerror = function() { btn.classList.remove("mic-listening"); };
-      } else { alert("Mic Not Supported"); }
     }
     
     function speak(text) { if ('speechSynthesis' in window) { let msg = new SpeechSynthesisUtterance(text); msg.lang = 'gu-IN'; window.speechSynthesis.speak(msg); } }
