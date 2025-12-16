@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Magic Excel Dates</title>
+  <title>Magic Excel Ultimate</title>
   <style>
     /* 1. ડિઝાઈન */
     body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #fff; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
@@ -11,7 +11,7 @@
     .app-bar { 
       background: #107c41; color: white; padding: 10px; 
       display: flex; align-items: center; justify-content: space-between;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 200;
     }
     .brand { font-weight: bold; font-size: 18px; }
 
@@ -28,9 +28,7 @@
     }
     .btn-green { color: #107c41; background: #e6f4ea; border-color: #107c41; }
     .btn-excel { background: #107c41; color: white; border: none; }
-    
     .math-btn:active { transform: scale(0.95); }
-
     .clear-btn { font-size: 12px; padding: 6px; color: #666; border: 1px solid #999; border-radius: 4px; background: #fff; margin-left: auto; }
 
     /* 3. જવાબ પટ્ટી */
@@ -40,55 +38,58 @@
     }
     #fx-input { flex-grow: 1; border: none; background: #f3f2f1; padding: 6px; border-radius: 2px; font-weight: bold; color: #107c41; }
 
-    /* 4. ટેબલ (Grid) */
+    /* 4. ગ્રીડ (Table) */
     .sheet-wrapper { flex-grow: 1; overflow: auto; position: relative; }
     table { border-collapse: collapse; min-width: 100%; table-layout: fixed; }
     
     th { 
       background: #f8f9fa; border: 1px solid #dcdcdc; height: 35px; 
-      text-align: center; color: #555; font-size: 14px; position: sticky; top: 0; z-index: 2; cursor: pointer;
+      text-align: center; color: #555; font-size: 14px; position: sticky; top: 0; z-index: 2;
+      position: relative;
     }
-    th:hover { background: #e0e0e0; } /* હોવર ઈફેક્ટ */
-
-    td { border: 1px solid #e0e0e0; height: 40px; min-width: 90px; }
+    .resizer {
+      width: 15px; height: 100%; position: absolute; right: 0; top: 0;
+      cursor: col-resize; user-select: none; touch-action: none; display: flex; justify-content: center; align-items: center;
+    }
+    .resizer::after { content: ""; width: 2px; height: 60%; background: #ccc; }
     
-    /* ઇનપુટ બોક્સ */
+    td { border: 1px solid #e0e0e0; height: 40px; }
     input.cell-input { 
       width: 100%; height: 100%; border: none; outline: none; padding: 0 5px; 
       font-size: 16px; text-align: center; background: transparent; color: #333; font-family: inherit;
     }
-    input.cell-input:focus { 
-      border: 2px solid #107c41; background: #e6f4ea; font-weight: bold;
-    }
-    
-    /* તારીખનું ઇનપુટ */
-    input[type="date"] {
-      font-size: 14px; position: relative;
-    }
-
-    /* હેડર ફિક્સ */
+    input.cell-input:focus { border: 2px solid #107c41; background: #e6f4ea; font-weight: bold; }
     th:first-child, td:first-child { 
       width: 35px; background: #f3f2f1; position: sticky; left: 0; z-index: 3; font-weight: bold; border-right: 2px solid #ccc; font-size: 12px;
     }
     th:first-child { z-index: 4; }
 
-    /* માઈક બટન */
+    /* --- નવું માઈક બટન (ઉપર જમણી બાજુ) --- */
     .mic-btn { 
       background: #107c41; color: white; border: none;
-      width: 55px; height: 55px; border-radius: 50%; font-size: 28px;
+      width: 50px; height: 50px; border-radius: 50%; font-size: 24px;
       display: flex; align-items: center; justify-content: center;
-      position: fixed; bottom: 25px; right: 25px; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4); z-index: 100;
+      /* હવે આ ફિક્સ થઈ ગયું ઉપર */
+      position: fixed; 
+      top: 135px; /* ઉપરથી આટલું નીચે */
+      right: 15px; /* જમણી બાજુ */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100;
     }
     .mic-listening { background: #d32f2f; animation: pulse 1s infinite; }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+    /* --- ક્રેડિટ લાઈન (Credit Line) --- */
+    .credit-footer {
+      background: #f1f1f1; text-align: center; padding: 5px;
+      font-size: 12px; color: #666; border-top: 1px solid #ddd;
+    }
   </style>
 </head>
 <body>
 
   <div class="app-bar">
     <div class="brand">📊 Desi Excel</div>
-    <button class="math-btn btn-excel" onclick="downloadExcel()">📥 Excel Save</button>
+    <button class="math-btn btn-excel" onclick="downloadExcel()">📥 Save Excel</button>
   </div>
 
   <div class="toolbar">
@@ -109,6 +110,10 @@
     <table id="grid"></table>
   </div>
 
+  <div class="credit-footer">
+    Created by: <b>[તમારું નામ અહીં લખો]</b> | Desi Excel App
+  </div>
+
   <button id="micBtn" class="mic-btn" onclick="toggleVoice()">🎤</button>
 
   <script>
@@ -116,20 +121,21 @@
     let cols = 5; 
     const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let activeCell = null;
+    let colWidths = [40, 90, 90, 90, 90, 90]; 
 
     function initGrid() {
       const table = document.getElementById('grid');
-      
-      // હેડર બનાવો (Clickable Headers)
-      let header = `<tr><th>#</th>`;
+      let header = `<tr><th style="width:${colWidths[0]}px">#</th>`;
       for(let i=0; i<cols; i++) {
-        // અહીં કોલમ હેડર પર ક્લિક ઈવેન્ટ મૂકી છે
-        header += `<th onclick="formatColumn(${i})">${letters[i]} <span style="font-size:10px">▼</span></th>`;
+        header += `
+          <th style="width:${colWidths[i+1]}px" id="th-${i}">
+            <span ondblclick="formatColumn(${i})">${letters[i]}</span>
+            <div class="resizer" onmousedown="initResize(event, ${i})" ontouchstart="initResize(event, ${i})"></div>
+          </th>`;
       }
       header += `</tr>`;
       table.innerHTML = header;
 
-      // રો બનાવો
       for(let r=1; r<=rows; r++) {
         let rowHTML = `<tr><td style="text-align:center;">${r}</td>`;
         for(let c=0; c<cols; c++) {
@@ -146,37 +152,42 @@
       document.getElementById('fx-input').value = `Cell: ${el.id}`;
     }
 
-    // --- નવી સુવિધા: કોલમ ફોર્મેટિંગ ---
-    function formatColumn(colIndex) {
-      // યુઝરને પૂછો
-      let choice = prompt(`કોલમ ${letters[colIndex]} માટે ફોર્મેટ પસંદ કરો:\n1 લખો -> તારીખ (Date)\n2 લખો -> લખાણ/નંબર (Text)`);
-      
-      if(choice === "1") {
-        // બધી સેલનો ટાઈપ બદલીને 'date' કરી દો
-        let inputs = document.querySelectorAll(`.col-${colIndex}`);
-        inputs.forEach(input => {
-          input.type = 'date';
-          input.value = ''; // જૂનું લખાણ કાઢી નાખવું સારું રહે
-        });
-        alert(`કોલમ ${letters[colIndex]} હવે તારીખ માટે સેટ થઈ ગઈ છે!`);
-      } 
-      else if(choice === "2") {
-        // પાછું 'text' કરી દો
-        let inputs = document.querySelectorAll(`.col-${colIndex}`);
-        inputs.forEach(input => {
-          input.type = 'text';
-        });
-        alert(`કોલમ ${letters[colIndex]} હવે સામાન્ય થઈ ગઈ છે.`);
-      }
+    // --- Drag Resize ---
+    let startX, startWidth, resizingColIndex;
+    function initResize(e, index) {
+      let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+      startX = clientX; resizingColIndex = index;
+      let th = document.getElementById(`th-${index}`);
+      startWidth = th.offsetWidth;
+      document.addEventListener('mousemove', doResize); document.addEventListener('mouseup', stopResize);
+      document.addEventListener('touchmove', doResize); document.addEventListener('touchend', stopResize);
+      e.target.classList.add('resizing'); e.preventDefault();
+    }
+    function doResize(e) {
+      let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+      let diff = clientX - startX;
+      let newWidth = startWidth + diff;
+      if(newWidth > 30) document.getElementById(`th-${resizingColIndex}`).style.width = newWidth + 'px';
+    }
+    function stopResize() {
+      document.removeEventListener('mousemove', doResize); document.removeEventListener('mouseup', stopResize);
+      document.removeEventListener('touchmove', doResize); document.removeEventListener('touchend', stopResize);
+      document.querySelectorAll('.resizer').forEach(r => r.classList.remove('resizing'));
     }
 
-    // --- Excel ડાઉનલોડ ---
+    // --- Date Format ---
+    function formatColumn(colIndex) {
+      let choice = prompt(`કોલમ ${letters[colIndex]} માટે:\n1 -> તારીખ (Date)\n2 -> લખાણ (Text)`);
+      if(choice === "1") document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'date');
+      else if(choice === "2") document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'text');
+    }
+
+    // --- Excel Export ---
     function downloadExcel() {
       let csvContent = "data:text/csv;charset=utf-8,";
       let headerArr = [""];
       for(let i=0; i<cols; i++) headerArr.push(letters[i]);
       csvContent += headerArr.join(",") + "\n";
-
       for(let r=1; r<=rows; r++) {
         let rowArr = [r];
         let hasData = false;
@@ -187,17 +198,16 @@
         }
         if(hasData) csvContent += rowArr.join(",") + "\n";
       }
-
       var encodedUri = encodeURI(csvContent);
       var link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "Desi_Excel_Sheet.csv");
+      link.setAttribute("download", "Desi_Excel.csv");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
 
-    // --- ગણતરી (Maths) ---
+    // --- Calculations ---
     function calculate(type) {
       if(!activeCell) return alert("જવાબ માટે ખાનું સિલેક્ટ કરો.");
       let currentId = activeCell.id;
@@ -206,7 +216,6 @@
       let colIndex = letters.indexOf(colChar);
       let numbers = []; let result = 0;
 
-      // ⬇ ઊભો સરવાળો
       if (type === 'col_sum') {
         for(let i=1; i<rowNum; i++) {
           let val = document.getElementById(`${colChar}${i}`).value;
@@ -215,7 +224,6 @@
         if(numbers.length === 0) return alert("ઉપર કોઈ રકમ નથી.");
         result = numbers.reduce((a, b) => a + b, 0);
       }
-      // ➡ આડો સરવાળો
       else if (type === 'row_sum') {
         for(let i=0; i<colIndex; i++) {
           let val = document.getElementById(`${letters[i]}${rowNum}`).value;
@@ -224,14 +232,11 @@
         if(numbers.length === 0) return alert("ડાબી બાજુ કોઈ રકમ નથી.");
         result = numbers.reduce((a, b) => a + b, 0);
       }
-      // અન્ય ગણતરી
       else {
-        // આડી લાઈન ચેક કરો
         for(let i=0; i<colIndex; i++) {
            let val = document.getElementById(`${letters[i]}${rowNum}`).value;
            let n = parseFloat(val); if(!isNaN(n)) numbers.push(n);
         }
-        // જો આડી ન મળે તો ઊભી
         if(numbers.length < 2) {
            numbers = [];
            for(let i=1; i<rowNum; i++) {
@@ -265,7 +270,6 @@
         recognition.onresult = function(event) {
           let text = event.results[0][0].transcript.toLowerCase();
           btn.classList.remove("mic-listening");
-          
           let mathStr = text.replace(/વત્તા/g, "+").replace(/ઓછા/g, "-").replace(/ગુણ્યા/g, "*").replace(/ભાગ્યા/g, "/").replace(/ /g, "");
           if (mathStr.includes("+") || mathStr.includes("-") || mathStr.includes("*") || mathStr.includes("/")) {
              try { activeCell.value = eval(mathStr); } catch(e) { activeCell.value = text; }
