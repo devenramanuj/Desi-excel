@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Magic Excel Ultimate</title>
+  <title>Lok Seva Excel</title>
   <style>
     /* 1. ડિઝાઈન */
     body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #fff; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
@@ -47,6 +47,14 @@
       text-align: center; color: #555; font-size: 14px; position: sticky; top: 0; z-index: 2;
       position: relative;
     }
+    
+    /* કોલમ હેડર બટન - હવે ક્લિક સહેલું થશે */
+    .col-header-btn {
+      background: transparent; border: none; font-weight: bold; font-size: 14px; 
+      width: 100%; height: 100%; cursor: pointer; color: #333;
+    }
+    .col-header-btn:active { background: #e0e0e0; }
+
     .resizer {
       width: 15px; height: 100%; position: absolute; right: 0; top: 0;
       cursor: col-resize; user-select: none; touch-action: none; display: flex; justify-content: center; align-items: center;
@@ -59,26 +67,27 @@
       font-size: 16px; text-align: center; background: transparent; color: #333; font-family: inherit;
     }
     input.cell-input:focus { border: 2px solid #107c41; background: #e6f4ea; font-weight: bold; }
+    
+    /* ડેટા પીકર */
+    input[type="date"] { position: relative; font-size: 14px; }
+
     th:first-child, td:first-child { 
       width: 35px; background: #f3f2f1; position: sticky; left: 0; z-index: 3; font-weight: bold; border-right: 2px solid #ccc; font-size: 12px;
     }
     th:first-child { z-index: 4; }
 
-    /* --- નવું માઈક બટન (ઉપર જમણી બાજુ) --- */
+    /* --- માઈક બટન (ઉપર જમણી બાજુ) --- */
     .mic-btn { 
       background: #107c41; color: white; border: none;
       width: 50px; height: 50px; border-radius: 50%; font-size: 24px;
       display: flex; align-items: center; justify-content: center;
-      /* હવે આ ફિક્સ થઈ ગયું ઉપર */
-      position: fixed; 
-      top: 135px; /* ઉપરથી આટલું નીચે */
-      right: 15px; /* જમણી બાજુ */
+      position: fixed; top: 135px; right: 15px; 
       box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100;
     }
     .mic-listening { background: #d32f2f; animation: pulse 1s infinite; }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-    /* --- ક્રેડિટ લાઈન (Credit Line) --- */
+    /* --- ક્રેડિટ લાઈન --- */
     .credit-footer {
       background: #f1f1f1; text-align: center; padding: 5px;
       font-size: 12px; color: #666; border-top: 1px solid #ddd;
@@ -111,7 +120,7 @@
   </div>
 
   <div class="credit-footer">
-    Created by: <b>Devendrabhai</b> | Desi Excel App
+    Created for: <b>Lok Seva (લોક સેવા)</b> | By Devendrabhai
   </div>
 
   <button id="micBtn" class="mic-btn" onclick="toggleVoice()">🎤</button>
@@ -127,9 +136,10 @@
       const table = document.getElementById('grid');
       let header = `<tr><th style="width:${colWidths[0]}px">#</th>`;
       for(let i=0; i<cols; i++) {
+        // સુધારો: હવે બટન મૂક્યું છે જેથી એક ક્લિક પર મેનુ ખુલે
         header += `
           <th style="width:${colWidths[i+1]}px" id="th-${i}">
-            <span ondblclick="formatColumn(${i})">${letters[i]}</span>
+            <button class="col-header-btn" onclick="formatColumn(${i})">${letters[i]} ▼</button>
             <div class="resizer" onmousedown="initResize(event, ${i})" ontouchstart="initResize(event, ${i})"></div>
           </th>`;
       }
@@ -152,6 +162,24 @@
       document.getElementById('fx-input').value = `Cell: ${el.id}`;
     }
 
+    // --- Date Format (Single Click Fix) ---
+    function formatColumn(colIndex) {
+      // એક વાર ક્લિક કરતા જ પૂછશે
+      let choice = prompt(`કોલમ ${letters[colIndex]} માં શું લખવું છે?\n1 લખો -> તારીખ (Date)\n2 લખો -> લખાણ (Text)`);
+      
+      if(choice === "1") {
+        document.querySelectorAll(`.col-${colIndex}`).forEach(input => {
+          input.type = 'date';
+          input.value = ''; // જૂનું સાફ કરો જેથી ભૂલ ન પડે
+        });
+        alert(`કોલમ ${letters[colIndex]} તારીખ માટે સેટ થઈ ગઈ!`);
+      } 
+      else if(choice === "2") {
+        document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'text');
+        alert(`કોલમ ${letters[colIndex]} નોર્મલ થઈ ગઈ.`);
+      }
+    }
+
     // --- Drag Resize ---
     let startX, startWidth, resizingColIndex;
     function initResize(e, index) {
@@ -161,25 +189,20 @@
       startWidth = th.offsetWidth;
       document.addEventListener('mousemove', doResize); document.addEventListener('mouseup', stopResize);
       document.addEventListener('touchmove', doResize); document.addEventListener('touchend', stopResize);
-      e.target.classList.add('resizing'); e.preventDefault();
+      e.target.classList.add('resizing'); 
+      e.preventDefault(); // Stop text selection
+      e.stopPropagation(); // Stop clicking the button behind it
     }
     function doResize(e) {
       let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
       let diff = clientX - startX;
       let newWidth = startWidth + diff;
-      if(newWidth > 30) document.getElementById(`th-${resizingColIndex}`).style.width = newWidth + 'px';
+      if(newWidth > 40) document.getElementById(`th-${resizingColIndex}`).style.width = newWidth + 'px';
     }
     function stopResize() {
       document.removeEventListener('mousemove', doResize); document.removeEventListener('mouseup', stopResize);
       document.removeEventListener('touchmove', doResize); document.removeEventListener('touchend', stopResize);
       document.querySelectorAll('.resizer').forEach(r => r.classList.remove('resizing'));
-    }
-
-    // --- Date Format ---
-    function formatColumn(colIndex) {
-      let choice = prompt(`કોલમ ${letters[colIndex]} માટે:\n1 -> તારીખ (Date)\n2 -> લખાણ (Text)`);
-      if(choice === "1") document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'date');
-      else if(choice === "2") document.querySelectorAll(`.col-${colIndex}`).forEach(input => input.type = 'text');
     }
 
     // --- Excel Export ---
